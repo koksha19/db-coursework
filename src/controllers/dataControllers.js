@@ -34,7 +34,7 @@ const postData = async (req, res) => {
             "INSERT INTO data (name, content, upload_date, last_edit_date, Category_id) VALUES(?, ?, ?, ?, ?)",
             [name, content, upload_date, last_edit_date, Category_id]
         );
-        res.status(201).json(result[0].insertId);
+        res.status(201).json({ message: `Created new piece of data with id ${result[0].insertId}`});
     } catch (error) {
         return res.status(400).json({ error: error });
     }
