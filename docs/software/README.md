@@ -352,3 +352,264 @@ COMMIT;
 ```
 
 ## RESTful сервіс для управління даними
+
+**server.js** (Створює Express сервер)
+
+```javascript
+require('dotenv').config();
+const express = require('express');
+
+const dataRoutes = require('./routes/dataRoutes');
+const accessRoutes = require('./routes/accessRoutes');
+
+const app = express();
+
+const PORT = process.env.PORT;
+
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
+app.use('/data', dataRoutes);
+app.use('/access', accessRoutes);
+
+app.listen(PORT, () => {
+  console.log('Listening on port ' + PORT);
+})
+```
+
+**connectDb.js** (Підключає нас до бази даних MySQL)
+
+```javascript
+const mysql = require("mysql2");
+
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+}).promise();
+
+module.exports = pool;
+```
+
+**dataControllers.js** (Описує контролери для взаємодії з таблицею Data)
+
+```javascript
+const pool = require("../config/connectDb");
+
+const getData = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM data');
+    res.status(200).json(result[0]);
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+const getDataById = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await pool.query("SELECT * FROM data WHERE id = ?", [id]);
+    if (result[0].length === 0) {
+      return res.status(404).json({ message: "Such piece of data doesn't exist" });
+    }
+    res.status(200).json(result[0]);
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+const postData = async (req, res) => {
+  const { name, content, upload_date, last_edit_date, Category_id } = req.body;
+
+  if (!name || !content || !upload_date || !last_edit_date || !Category_id) {
+    return res.status(400).json({ message: 'Required fields were not found' });
+  }
+
+  try {
+    const result = await pool.query(
+            "INSERT INTO data (name, content, upload_date, last_edit_date, Category_id) VALUES(?, ?, ?, ?, ?)",
+            [name, content, upload_date, last_edit_date, Category_id]
+    );
+    res.status(201).json({ message: `Created new piece of data with id ${result[0].insertId}`});
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+const putData = async (req, res) => {
+  const fields = [];
+  const values = [];
+
+  const { name, content, Category_id } = req.body;
+  const id = req.params.id;
+
+  try {
+    if (name) {
+      fields.push('name = ?');
+      values.push(name);
+    }
+    if (content) {
+      fields.push('content = ?');
+      values.push(content);
+    }
+    if (Category_id) {
+      fields.push('Category_id = ?');
+      values.push(Category_id);
+    }
+    values.push(id);
+    await pool.query(
+            `UPDATE Data SET ${fields.join(', ')} WHERE id = ?`,
+            values,
+    );
+    const updatedData = await getDataById(req, res);
+    res.status(200).json(updatedData);
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+const deleteData = async (req, res) => {
+  const { id } = req.body;
+
+  try {
+    const result = await pool.query("DELETE FROM data WHERE id = ?", [id]);
+    if (result[0].affectedRows < 1) {
+      return res.status(404).json({ message: `Failed to delete data` });
+    }
+    res.status(200).json({ message: `Deleted access with id ${id}` });
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+module.exports = { getData, getDataById, postData, putData, deleteData };
+```
+
+**accessControllers.js** (Описує контролери для взаємодії з таблицею Access)
+
+```javascript
+const pool = require('../config/connectDb');
+
+const getAccess = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM access');
+    res.status(200).json(result[0]);
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+const getAccessById = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await pool.query("SELECT * FROM access WHERE id = ?", [id]);
+    if (result[0].length === 0) {
+      return res.status(404).json({ message: "Such piece of data doesn't exist" });
+    }
+    res.status(200).json(result[0]);
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+const postAccess = async (req, res) => {
+  const { access_type, User_id, Data_id } = req.body;
+
+  if (!access_type || !User_id || !Data_id) {
+    return res.status(400).json({ message: 'Required fields were not found' });
+  }
+
+  try {
+    const result = await pool.query(
+            "INSERT INTO access (access_type, User_id, Data_id) VALUES(?, ?, ?)",
+            [access_type, User_id, Data_id]
+    );
+    res.status(201).json({ message: `Created new piece of data with id ${result[0].insertId}`});
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+const putAccess = async (req, res) => {
+  const fields = [];
+  const values = [];
+
+  const { access_type, User_id, Data_id } = req.body;
+  const id = req.params.id;
+
+  try {
+    if (access_type) {
+      fields.push('access_type = ?');
+      values.push(access_type);
+    }
+    if (User_id) {
+      fields.push('User_id = ?');
+      values.push(User_id);
+    }
+    if (Data_id) {
+      fields.push('Data_id = ?');
+      values.push(Data_id);
+    }
+    values.push(id);
+    await pool.query(
+            `UPDATE access SET ${fields.join(', ')} WHERE id = ?`,
+            values,
+    );
+    const updatedAccess = await getAccessById(req, res);
+    res.status(200).json(updatedAccess);
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+const deleteAccess = async (req, res) => {
+  const { id } = req.body;
+
+  try {
+    const result = await pool.query("DELETE FROM access WHERE id = ?", [id]);
+    if (result[0].affectedRows < 1) {
+      return res.status(404).json({ message: `Failed to delete access` });
+    }
+    res.status(200).json({ message: `Deleted access with id ${id}` });
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+module.exports = { getAccess, getAccessById, postAccess, putAccess, deleteAccess };
+```
+
+**dataRoutes.js** (Описує маршрути для Data контролерів)
+```javascript
+const express = require('express');
+
+const dataControllers = require('../controllers/dataControllers');
+
+const router = express.Router();
+
+router.get("/", dataControllers.getData);
+router.get("/:id", dataControllers.getDataById);
+router.post("/", dataControllers.postData);
+router.put("/:id", dataControllers.putData);
+router.delete("/", dataControllers.deleteData);
+
+module.exports = router;
+```
+
+**accessRoutes.js** (Описує маршрути для Access контролерів)
+```javascript
+const express = require('express');
+
+const accessControllers = require('../controllers/accessControllers');
+
+const router = express.Router();
+
+router.get("/", accessControllers.getAccess);
+router.get("/:id", accessControllers.getAccessById);
+router.post("/", accessControllers.postAccess);
+router.put("/:id", accessControllers.putAccess);
+router.delete("/", accessControllers.deleteAccess);
+
+module.exports = router;
+```
