@@ -80,7 +80,7 @@ const deleteData = async (req, res) => {
         if (result[0].affectedRows < 1) {
             return res.status(404).json({ message: `Failed to delete data` });
         }
-        res.status(200).json(result);
+        res.status(200).json({ message: `Deleted access with id ${id}` });
     } catch (error) {
         return res.status(400).json({ error: error });
     }
