@@ -17,6 +17,7 @@
     "vuepress-theme-hope": "2.0.0-rc.23"
   },
   "dependencies": {
+    "@vue/language-server": "^2.2.0",
     "express": "^4.21.2",
     "markdown-it-plantuml": "^1.4.1"
   }
