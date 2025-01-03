@@ -9,7 +9,7 @@ export default defineUserConfig({
   lang: "en-US",
   // Замінити на назву свого проєкту
   title: "Система управління відкритими даними",
-  description: "Лабораторні роботи",
+  description: "Лабораторна робота 6 Берези Лева. Група ІМ-32",
 
   theme,
 
